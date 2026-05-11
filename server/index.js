@@ -6,9 +6,8 @@ import { google } from 'googleapis';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
-import apiRouter from './routes/api.js';
-
+import crypto from 'crypto';
+import { sendWelcomeVerificationEmail } from './services/emailService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,7 +58,7 @@ const defaultContent = {
       date: 'March 14, 2025',
       description: 'NexaSphere\'s inaugural Knowledge Sharing Session focused on the impact of AI.',
       status: 'completed',
-      icon: '🧠',
+      icon: 'Brain',
       tags: ['AI', 'Learning', 'Community'],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -175,7 +174,7 @@ function sanitizeEvent(input = {}) {
     date: toSafeString(input.date, 80),
     description: toSafeString(input.description, 1200),
     status,
-    icon: toSafeString(input.icon || '📌', 8),
+    icon: toSafeString(input.icon || 'Pin', 32),
     tags,
   };
 }
@@ -209,7 +208,7 @@ async function listEventsStore() {
       date: r.date_text || r.date,
       description: r.description,
       status: r.status,
-      icon: r.icon || '📌',
+      icon: r.icon || 'Pin',
       tags: Array.isArray(r.tags) ? r.tags : [],
       createdAt: r.created_at,
       updatedAt: r.updated_at,
@@ -246,7 +245,7 @@ async function createEventStore(event) {
       date: row.date_text,
       description: row.description,
       status: row.status,
-      icon: row.icon || '📌',
+      icon: row.icon || 'Pin',
       tags: Array.isArray(row.tags) ? row.tags : [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -281,7 +280,7 @@ async function updateEventStore(id, patch) {
       date: row.date_text,
       description: row.description,
       status: row.status,
-      icon: row.icon || '📌',
+      icon: row.icon || 'Pin',
       tags: Array.isArray(row.tags) ? row.tags : [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -702,6 +701,16 @@ async function handleForm(formType, req, res) {
     } catch (sheetErr) {
       if (!savedToSupabase) throw sheetErr;
     }
+
+    // NEW: Send a welcome email to the user
+    try {
+      const verifyUrl = `${process.env.CORS_ORIGIN || 'http://localhost:5173'}/verify?email=${encodeURIComponent(body.collegeEmail)}`;
+      await sendWelcomeVerificationEmail(body.collegeEmail, body.fullName, verifyUrl);
+    } catch (emailErr) {
+      console.error('[Form Handler] Failed to send welcome email:', emailErr);
+      // We don't fail the whole request if email fails, but we log it.
+    }
+
     return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ error: e?.message || 'Submission failed' });
