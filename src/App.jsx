@@ -36,13 +36,14 @@ import RecruitmentPage     from './pages/recruitment/RecruitmentPage';
 import MembershipPage      from './pages/membership/MembershipPage';
 import AdminPage           from './pages/admin/AdminPage';
 import RoadmapsPage        from './pages/roadmaps/RoadmapsPage';
+import ProjectsPage        from './pages/projects/ProjectsPage';
 
 import { activityPages }   from './data/activities/index';
 import { events as fallbackEvents } from './data/eventsData';
 import nexasphereLogo      from './assets/images/logos/nexasphere-logo.png';
 
 const MNH = 88, DNH = 64;
-const TABS = ['Home','Activities','Events','Roadmaps','About','Team','Contact'];
+const TABS = ['Home','Activities','Events','Projects','Roadmaps','About','Team','Contact'];
 
 /* ── Page wipe transition ── */
 function Wipe({ on, ph }) {
@@ -312,7 +313,7 @@ export default function App() {
   }, []);
 
   const onTab = useCallback(tab => {
-    if (['Activities','Events','Roadmaps','About','Team','Contact'].includes(tab)) {
+    if (['Activities','Events','Projects','Roadmaps','About','Team','Contact'].includes(tab)) {
       nav(() => { setPage({ type:'section', section:tab }); setActiveTab(tab); });
       return;
     }
@@ -404,6 +405,7 @@ export default function App() {
           <PageIn k={page.type + (page.section || page.activityKey)}>
             {page.section === 'Activities' && <ActivitiesPage onNavigate={onNavigate} onBack={onBackHome}/>}
             {page.section === 'Events'     && <EventsPage onBack={onBackHome} onEventClick={onKSSClick} events={eventsData}/>}
+            {page.section === 'Projects'   && <ProjectsPage onBack={onBackHome}/>}
             {page.section === 'Roadmaps'   && <RoadmapsPage onBack={onBackHome}/>}
             {page.section === 'About'      && <AboutPage onBack={onBackHome}/>}
             {page.section === 'Team'       && <TeamPage onBack={onBackHome} onApply={openApply}/>}
@@ -431,7 +433,7 @@ export default function App() {
               <AboutSection/>
               <SectionDivider/>
               <TeamSection onApply={openApply}/>
-              <Footer onAdmin={() => nav(() => setPage({ type:'admin' }))} onRoadmaps={() => onTab('Roadmaps')} />
+              <Footer onAdmin={() => nav(() => setPage({ type:'admin' }))} onProjects={() => onTab('Projects')} onRoadmaps={() => onTab('Roadmaps')} />
             </PageIn>
           )
         )}
