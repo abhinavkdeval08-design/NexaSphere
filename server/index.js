@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import helmet from 'helmet';
 import express from 'express';
 import { EventEmitter } from 'events';
 import cors from 'cors';
@@ -21,11 +22,13 @@ import { apiRateLimiter, authRateLimiter } from './middleware/rateLimiter.js';
 import { portfolioRepository } from './repositories/portfolioRepository.js';
 import { Mutex } from 'async-mutex';
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CONTENT_FILE = path.join(__dirname, 'data', 'content.json');
 
 const app = express();
+app.use(helmet());
 
 app.use(cors({
   origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()).filter(Boolean) : true,
