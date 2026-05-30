@@ -359,8 +359,8 @@ graph TB
 git clone https://github.com/Ayushh-Sharmaa/NexaSphere.git
 cd NexaSphere
 
-# Install frontend dependencies
-npm install
+# Install website dependencies
+cd website && npm install && cd ..
 
 # Install admin dashboard dependencies
 cd admin-dashboard && npm install && cd ..
@@ -428,13 +428,14 @@ psql postgres -c "CREATE DATABASE nexasphere;"
 ### 4. 🚀 Launch
 
 ```bash
-# Start the frontend dev server
-npm run dev
+# Start the website dev server
+cd website && npm run dev
+# Or from root: npm run dev:website
 ```
 
 | Service | URL |
 |---|---|
-| **Frontend** | http://localhost:3000 |
+| **Website** | http://localhost:5175 |
 | **Admin Dashboard** | Run separately — see [Admin Dashboard](#-admin-dashboard) |
 | **Java Backend** | See [server-java/README.md](server-java/README.md) |
 
@@ -445,160 +446,64 @@ npm run dev
 ```
 NexaSphere/
 │
-├── 📂 src/                        ← React 18 application source
-│   ├── App.jsx                    ← Root router and layout shell
-│   ├── main.jsx                   ← Vite entry point
-│   ├── i18n.js                    ← Internationalisation config
-│   │
-│   ├── 📂 components/             ← Reusable UI components
-│   │   ├── admin/                 ← Admin-only UI panels
-│   │   ├── bookmarks/             ← Bookmark UI widgets
-│   │   ├── calendar/              ← Event calendar views
-│   │   ├── collab/                ← Collaborative workspace UI
-│   │   ├── common/                ← Shared atomic components
-│   │   ├── dashboard/             ← Dashboard widgets
-│   │   ├── developer/             ← Developer profile cards
-│   │   ├── events/                ← Event listings & detail views
-│   │   ├── gamification/          ← Points, badges, leaderboard UI
-│   │   ├── history/               ← Activity history display
-│   │   ├── moderation/            ← Content moderation controls
-│   │   ├── portfolio/             ← Portfolio builder components
-│   │   ├── recommendation/        ← AI recommendation widgets
-│   │   ├── roadmaps/              ← Interactive roadmap builder
-│   │   ├── ResumeAnalyzer/        ← Resume upload & AI analysis
-│   │   └── ui/                    ← Base design system primitives
-│   │
-│   ├── 📂 pages/                  ← Route-level page components
-│   │   ├── home/                  ← Landing page
-│   │   ├── events/                ← Events listing & detail
-│   │   ├── dashboard/             ← User dashboard
-│   │   ├── admin/                 ← Admin control panel
-│   │   ├── portfolio/             ← Portfolio viewer
-│   │   ├── roadmaps/              ← Roadmap explorer
-│   │   ├── workspace/             ← Collaborative workspace
-│   │   ├── resume/                ← Resume tools
-│   │   ├── team/                  ← Core team directory
-│   │   ├── collab/                ← Collaboration hub
-│   │   ├── certificates/          ← Certificate viewer
-│   │   ├── membership/            ← Membership management
-│   │   ├── projects/              ← Project showcase
-│   │   ├── recruitment/           ← Recruitment board
-│   │   ├── activities/            ← Activity feed
-│   │   ├── about/                 ← About page
-│   │   └── contact/               ← Contact page
-│   │
-│   ├── 📂 context/                ← React Context providers
-│   │   ├── BookmarkContext.tsx    ← Bookmark state provider
-│   │   ├── RoadmapBuilderContext.tsx ← Roadmap builder state
-│   │   ├── SocketContext.tsx      ← Socket.io context wrapper
-│   │   └── theme/                 ← Theme (dark/light) context
-│   │
-│   ├── 📂 hooks/                  ← Custom React hooks
-│   │   ├── useSocket.js/.ts       ← Socket.io connection hook
-│   │   ├── useNotifications.js    ← Push notification hook
-│   │   ├── useSearch.js           ← Global search hook
-│   │   ├── useFormValidation.js   ← Form validation hook
-│   │   ├── useRecommendations.js  ← AI recommendations hook
-│   │   └── ...                    ← 18 hooks total
-│   │
-│   ├── 📂 services/               ← API client & service layer
-│   │   ├── dashboardRepository.js ← Dashboard data fetching
-│   │   ├── moderationService.js   ← Content moderation calls
-│   │   ├── socket.ts              ← Socket client initialiser
-│   │   └── recommendation/        ← AI recommendation service
-│   │
-│   ├── 📂 store/                  ← Zustand global stores
-│   │   └── workspaceStore.ts      ← Workspace collaboration state
-│   │
-│   ├── 📂 lib/                    ← Core utilities & integrations
-│   │   ├── logger.ts              ← Pino logger setup
-│   │   ├── promptStore.js         ← AI prompt management
-│   │   └── workspaceService.js    ← Workspace business logic
-│   │
-│   ├── 📂 utils/                  ← Pure utility functions
-│   │   ├── socketClient.js        ← Socket.io singleton client
-│   │   ├── seoUtils.js            ← SEO meta tag helpers
-│   │   ├── errorTracking.js       ← Sentry error utilities
-│   │   ├── exportRoadmap.ts       ← PDF/PNG roadmap export
-│   │   ├── pushNotificationClient.js ← Push notification util
-│   │   └── ...                    ← 10 utilities total
-│   │
-│   ├── 📂 styles/                 ← Global CSS
-│   ├── 📂 assets/                 ← Static images, SVGs, fonts
-│   ├── 📂 data/                   ← Static JSON data files
-│   ├── 📂 locales/                ← i18n translation files
-│   └── 📂 shared/                 ← next-image / next-dynamic shims
+├── 📂 website/                    ← NexaSphere public website (React 18 + Vite PWA)
+│   ├── 📂 src/                    ← All React source code
+│   │   ├── App.jsx                ← Root router and layout shell
+│   │   ├── main.jsx               ← Vite entry point
+│   │   ├── 📂 components/         ← Reusable UI components (19 feature areas)
+│   │   ├── 📂 pages/              ← Route-level pages (18 routes)
+│   │   ├── 📂 context/            ← React Context providers
+│   │   ├── 📂 hooks/              ← Custom React hooks (18 hooks)
+│   │   ├── 📂 services/           ← API client & service layer
+│   │   ├── 📂 store/              ← Zustand global stores
+│   │   ├── 📂 utils/              ← Pure utility functions
+│   │   ├── 📂 styles/             ← Global CSS
+│   │   └── 📂 locales/            ← i18n translation files
+│   ├── 📂 public/                 ← Static assets (PWA icons, favicon)
+│   ├── index.html
+│   ├── vite.config.js             ← Vite + PWA + Sentry config
+│   ├── package.json               ← Standalone website dependencies
+│   └── vercel.json                ← Vercel deployment config
 │
-├── 📂 src/
-│   ├── 📂 components/              # Reusable UI elements
-│   │   ├── Theme components         # Dark/light mode, cyber aesthetic
-│   │   ├── Form components          # Registration, membership forms
-│   │   └── Developer cards           # Team member showcase cards
-│   ├── 📂 lib/                      # Database connections & services
-│   ├── 📂 pages/                    # Page templates & views
-│   ├── 📂 shared/                   # Cross-cutting assets & wrappers
-│   └── 📂 styles/                   # Global typography, colors, animations
-│
-├── 📂 admin-dashboard/              # Standalone admin panel (React + Vite)
+├── 📂 admin-dashboard/            ← Standalone admin panel (React + Vite)
 │   ├── 📂 src/
-│   │   ├── 📂 components/          # Admin UI components
-│   │   │   ├── EventForm.jsx        # Event CRUD forms
-│   │   │   ├── CoreTeamForm.jsx     # Team member management
-│   │   │   ├── Sidebar.jsx          # Navigation sidebar
-│   │   │   └── Toast.jsx            # Notification toasts
-│   │   ├── 📂 pages/               # Admin page views
-│   │   │   ├── DashboardHome.jsx    # Analytics overview
-│   │   │   ├── EventsManager.jsx    # Event management
-│   │   │   ├── CertificateManager.jsx  # Certificate generation
-│   │   │   └── MembershipResponsesManager.jsx
-│   │   ├── 📂 hooks/               # Custom React hooks
-│   │   └── 📂 services/            # API client & auth services
+│   │   ├── 📂 components/         ← Admin UI components
+│   │   ├── 📂 pages/              ← Admin pages (Events, Team, Certs, etc.)
+│   │   ├── 📂 hooks/              ← Admin-specific hooks
+│   │   └── 📂 services/           ← API client & auth services
+│   ├── package.json
+│   ├── vite.config.js
+│   └── vercel.json                ← Standalone Vercel config
+│
+├── 📂 server/                     ← Node.js / Cloudflare Workers API
+│   ├── index.js                   ← Main server entry
+│   ├── 📂 controllers/
+│   ├── 📂 middleware/
+│   ├── 📂 routes/
 │   └── package.json
 │
-├── 📂 server-java/                   # Spring Boot backend
+├── 📂 server-java/                ← Spring Boot REST API (Java 17)
 │   ├── 📂 src/main/java/org/nexasphere/
-│   │   ├── 📂 config/              # Security, CORS, OpenAPI config
-│   │   ├── 📂 controller/          # REST API controllers
-│   │   ├── 📂 model/               # JPA entity models
-│   │   ├── 📂 repository/          # Data access repositories
-│   │   ├── 📂 service/             # Business logic services
-│   │   └── 📂 event/               # Domain events & audit
-│   └── pom.xml                      # Maven dependencies
+│   │   ├── 📂 controller/         ← REST controllers
+│   │   ├── 📂 model/entity/       ← JPA entities
+│   │   ├── 📂 repository/         ← Spring Data repositories
+│   │   ├── 📂 service/            ← Business logic
+│   │   └── 📂 config/             ← Security, CORS, OpenAPI
+│   └── pom.xml
 │
-├── 📂 api/                           # Serverless API functions
-│   └── core-team/apply.cjs          # Core team application handler
+├── 📂 server-python/              ← Python microservice (notifications)
+├── 📂 google-apps-script/         ← Google Workspace integrations
+├── 📂 docs/                       ← Architecture & workflow docs
+├── 📂 api/                        ← Serverless API functions
+├── 📂 .github/                    ← CI/CD and issue templates
 │
-├── 📂 google-apps-script/            # Google Workspace integrations
-│   └── Code.gs                       # Apps Script automation
-│
-├── 📂 e2e/                           # End-to-end Playwright tests
-│   ├── main.spec.ts                 # Core feature tests
-│   └── prompt-history.spec.ts       # History feature tests
-│
-├── 📂 public/                        # Static assets
-│   ├── 📂 assets/                   # Images and logos
-│   ├── manifest.json                # PWA manifest
-│   ├── sw.js                        # Service worker
-│   └── firebase-messaging-sw.js     # Firebase push worker
-│
-├── 📂 scripts/                       # Automation scripts
-│   └── migrate-all.sh               # Database migration runner
-│
-├── 📂 .github/                       # GitHub configuration
-│   ├── 📂 ISSUE_TEMPLATE/          # Bug report & feature request templates
-│   ├── 📂 workflows/               # CI/CD & GSSoC automation
-│   └── pull_request_template.md     # PR template
-│
-├── .env.example                      # Environment variable template
-├── index.html                        # Vite entry point
-├── next.config.js                    # Next.js configuration
-├── package.json                      # Node.js dependencies & scripts
-├── playwright.config.ts              # Playwright test configuration
-├── eslint.config.js                  # ESLint configuration
-└── LICENSE                           # MIT License
+├── package.json                   ← Monorepo root (workspace orchestrator)
+├── vercel.json                    ← Root Vercel config (points to website/)
+└── README.md
 ```
 
 ---
+
 
 ## 📡 API Documentation
 
@@ -621,7 +526,7 @@ The Java backend exposes a comprehensive REST API. Full documentation is auto-ge
 
 > For full API docs with request/response schemas, run the Java backend and visit `/swagger-ui.html`.
 
-See [API_DOCUMENTATION_GUIDE.md](API_DOCUMENTATION_GUIDE.md) for detailed integration examples.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture documentation.
 
 ---
 
@@ -642,12 +547,19 @@ The admin dashboard is a standalone React + Vite application for managing NexaSp
 ```bash
 cd admin-dashboard
 npm install
-npm run dev
+npm run dev   # Runs on http://localhost:5001
 ```
 
-The admin dashboard runs on http://localhost:5174 by default.
-
 See [admin-dashboard/README.md](admin-dashboard/README.md) for complete setup instructions.
+
+### Deploying on Vercel
+
+Create **two separate Vercel projects**:
+
+| Project | Root Directory | Output |
+|---|---|---|
+| NexaSphere Website | `website/` | `dist` |
+| NexaSphere Admin | `admin-dashboard/` | `dist` |
 
 ---
 
@@ -658,34 +570,25 @@ NexaSphere has a comprehensive testing setup:
 ### Unit & Integration Tests (Vitest)
 
 ```bash
-# Run all tests
-npm test
+# Run website tests
+cd website && npm test
 
-# Run tests in watch mode
-npm run test:watch
-
-# Run tests with UI
-npm run test:ui
+# Run admin tests
+cd admin-dashboard && npm test
 ```
 
 ### End-to-End Tests (Playwright)
 
 ```bash
-# Run E2E tests
-npm run e2e
-
-# Run E2E tests in debug mode
-npm run e2e:debug
+# From website directory
+cd website && npx playwright test
 ```
 
 ### Linting & Formatting
 
 ```bash
-# Lint the codebase
+# Lint (run from either workspace)
 npm run lint
-
-# Auto-fix lint issues
-npm run lint:fix
 ```
 
 ---

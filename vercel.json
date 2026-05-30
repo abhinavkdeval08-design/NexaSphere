@@ -1,7 +1,7 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "cd website && npm install --prefer-offline --no-audit --no-fund && npm run build",
   "installCommand": "npm install --prefer-offline --no-audit --no-fund",
-  "outputDirectory": "dist",
+  "outputDirectory": "website/dist",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
@@ -20,5 +20,8 @@
         { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     }
-  ]
+  ],
+  "env": {
+    "DISABLE_PWA": "true"
+  }
 }

@@ -45,7 +45,7 @@ public ResponseEntity<EventEntity> update(@PathVariable String id,
 
     return repo.findById(id).map(existing -> {
 
-        // merge only non-null fields
+        // merge only non-null fields that exist on EventEntity
         if (event.getName() != null) {
             existing.setName(sanitizer.clean(event.getName()));
         }
@@ -54,19 +54,27 @@ public ResponseEntity<EventEntity> update(@PathVariable String id,
             existing.setDescription(event.getDescription());
         }
 
-        if (event.getDate() != null) {
-            existing.setDate(event.getDate());
+        if (event.getDateText() != null) {
+            existing.setDateText(event.getDateText());
         }
 
-        if (event.getLocation() != null) {
-            existing.setLocation(event.getLocation());
+        if (event.getStatus() != null) {
+            existing.setStatus(event.getStatus());
+        }
+
+        if (event.getIcon() != null) {
+            existing.setIcon(event.getIcon());
+        }
+
+        if (event.getTags() != null && !event.getTags().isEmpty()) {
+            existing.setTags(event.getTags());
         }
 
         // save merged entity
         EventEntity saved = repo.save(existing);
         return ResponseEntity.ok(saved);
 
-    }).orElseGet(() -> ResponseEntity.notFound().build());
+    }).orElseGet(() -> ResponseEntity.<EventEntity>notFound().build());
 }
 
     @DeleteMapping("/{id}")

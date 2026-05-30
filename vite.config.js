@@ -1,16 +1,20 @@
+/**
+ * Root vite.config.js
+ *
+ * This file exists for backwards-compatibility only.
+ * The canonical configuration is in website/vite.config.js
+ *
+ * To develop the website:   cd website && npm run dev
+ * To build the website:     cd website && npm run build
+ * To develop admin:         cd admin-dashboard && npm run dev
+ */
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      "next/image": "/src/shared/next-image.jsx",
-      "next/dynamic": "/src/shared/next-dynamic.jsx",
-    },
-  },
-  // Supports Vercel (/) and GitHub Pages (/NexaSphere/) via env var
+  root: "./website",
   base: process.env.VITE_BASE_PATH || "/",
   plugins: [
     react(),
@@ -18,9 +22,10 @@ export default defineConfig({
       org: process.env.SENTRY_ORG || "nexasphere",
       project: process.env.SENTRY_PROJECT || "javascript-react",
       authToken: process.env.SENTRY_AUTH_TOKEN,
+      silent: true,
     }),
     VitePWA({
-      disable: true,
+      disable: process.env.DISABLE_PWA === "true",
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "pwa-192x192.png", "pwa-512x512.png"],
       manifest: {
@@ -32,28 +37,10 @@ export default defineConfig({
         background_color: "#0A0A0A",
         display: "standalone",
         icons: [
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-        ],
-        shortcuts: [
-          {
-            src: "pwa-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any maskable",
-          },
+          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
@@ -62,6 +49,9 @@ export default defineConfig({
       },
     }),
   ],
+  optimizeDeps: {
+    include: ["idb-keyval"],
+  },
   server: {
     port: 5175,
     proxy: {

@@ -52,8 +52,8 @@ public class CollaborationService {
             if (internalServiceSecret != null && !internalServiceSecret.isEmpty()) {
                 headers.set("X-Service-Auth", internalServiceSecret);
             }
-            HttpEntity<JoinRequestEntity> request = new HttpEntity<>(saved, headers);
-            restTemplate.postForObject(url, request, String.class);
+            HttpEntity<JoinRequestEntity> httpEntity = new HttpEntity<>(saved, headers);
+            restTemplate.postForObject(url, httpEntity, String.class);
         } catch (Exception e) {
             // Log error, continue execution
             System.err.println("Failed to notify python microservice: " + e.getMessage());
