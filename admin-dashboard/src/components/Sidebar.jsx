@@ -3,6 +3,9 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AdminIcon } from './AdminIcon';
 
+/* URL of the public website — configurable via .env */
+const WEBSITE_URL = import.meta.env.VITE_WEBSITE_URL || 'http://localhost:5175';
+
 const links = [
   { to: '/dashboard', label: 'Dashboard', icon: 'Dashboard' },
   { to: '/dashboard/events', label: 'Events', icon: 'Calendar' },
@@ -45,6 +48,32 @@ export function Sidebar() {
           <span className="brand-dot" />
           <span>NexaSphere Admin</span>
         </div>
+
+        {/* Back to website link */}
+        <a
+          href={WEBSITE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="sidebar-back-link"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 20px',
+            fontSize: '0.75rem',
+            color: 'var(--admin-text-muted, #888)',
+            textDecoration: 'none',
+            borderBottom: '1px solid var(--admin-border, rgba(255,255,255,0.06))',
+            marginBottom: '8px',
+            transition: 'color 0.2s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--admin-accent, #CC1111)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--admin-text-muted, #888)')}
+        >
+          <AdminIcon name="ArrowLeft" size={12} aria-hidden="true" />
+          Back to Website
+        </a>
+
         <nav className="sidebar-nav">
           {links.map(({ to, label, icon }) => (
             <NavLink
@@ -59,9 +88,10 @@ export function Sidebar() {
             </NavLink>
           ))}
         </nav>
+
         <div className="sidebar-footer">
           <span className="sidebar-email">{email}</span>
-          <button className="btn-logout" onClick={logout} aria-label="Logout {email}">
+          <button className="btn-logout" onClick={logout} aria-label={`Logout ${email}`}>
             Logout
           </button>
         </div>

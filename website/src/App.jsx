@@ -1,4 +1,12 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect, lazy, Suspense } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useNavigate,
+  useLocation,
+  useParams,
+} from 'react-router-dom';
 
 import './styles/themes.css';
 import './styles/globals.css';
@@ -7,10 +15,9 @@ import './styles/chatbot.css';
 import './styles/components.css';
 import './styles/portfolio.css';
 import './styles/pwa.css';
-
 import './styles/aurora.css';
 import './styles/motion.css';
-import WorkspacePage from './pages/workspace/WorkspacePage';
+
 import SearchBar from './components/SearchBar';
 import FloatingDock from './components/common/FloatingDock';
 import ParticleBackground from './shared/ParticleBackground';
@@ -31,7 +38,6 @@ import {
   AmbientOrbs,
   SectionDivider,
   PageFlash,
-  BannerOrbs,
   useNsReveal,
   useHeroParallax,
   useNavScrollTint,
@@ -43,7 +49,6 @@ import EventsPage from './pages/events/EventsPage';
 import AboutPage from './pages/about/AboutPage';
 import TeamPage from './pages/team/TeamPage';
 import ContactPage from './pages/contact/ContactPage';
-import dynamic from 'next/dynamic';
 import apiClient from './utils/apiClient.js';
 import {
   getLocalEvents,
@@ -53,14 +58,6 @@ import {
 } from './utils/publicContentStore.js';
 import { initializeSocket, on, off, joinRoom } from './utils/socketClient.js';
 import NotFoundPage from './pages/NotFoundPage';
-
-const RecruitmentPage = dynamic(() => import('./pages/recruitment/RecruitmentPage'), {
-  ssr: false,
-});
-const MembershipPage = dynamic(() => import('./pages/membership/MembershipPage'), { ssr: false });
-const AdminPage = dynamic(() => import('./pages/admin/AdminPage'), {
-  ssr: false,
-});
 import RoadmapsPage from './pages/roadmaps/RoadmapsPage';
 import ProjectsPage from './pages/projects/ProjectsPage';
 import CertificateVerifyPage from './pages/certificates/CertificateVerifyPage';
@@ -69,6 +66,7 @@ import PortfolioBuilder from './components/portfolio/PortfolioBuilder';
 import PublicPortfolio from './pages/portfolio/PublicPortfolio';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import AnalyticsPage from './pages/analytics/AnalyticsPage';
+import WorkspacePage from './pages/workspace/WorkspacePage';
 
 import { activityPages } from './data/activities/index';
 import { events as fallbackEvents } from './data/eventsData';
@@ -88,26 +86,17 @@ import OfflineBanner from './components/pwa/OfflineBanner.jsx';
 import InstallPrompt from './components/pwa/InstallPrompt.jsx';
 import UpdatePrompt from './components/pwa/UpdatePrompt.jsx';
 
+// Lazy-loaded heavy pages
+const RecruitmentPage = lazy(() => import('./pages/recruitment/RecruitmentPage'));
+const MembershipPage = lazy(() => import('./pages/membership/MembershipPage'));
+const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
+
 const MNH = 88,
   DNH = 64;
-const TABS = [
-  'Home',
-  'Dashboard',
-  'Analytics',
-  'Activities',
-  'Events',
-  'Projects',
-  'Roadmaps',
-  'Portfolio',
-  'Collab',
-  'About',
-  'Team',
-  'Contact',
-];
 
 /* ── Page wipe transition ── */
-function Wipe({ on, ph }) {
-  if (!on) return null;
+function Wipe({ on: wipeOn, ph }) {
+  if (!wipeOn) return null;
   return (
     <>
       <div
@@ -227,21 +216,18 @@ function Cursor() {
     const onOver = (e) => {
       s.hovering = !!e.target.closest('button,a,[role="button"],[tabindex]');
     };
-
     const onMouseLeave = () => {
       s.visible = false;
       if (orbRef.current) orbRef.current.style.display = 'none';
       if (trailRef.current) trailRef.current.style.display = 'none';
       if (glowRef.current) glowRef.current.style.display = 'none';
     };
-
     const onMouseEnter = () => {
       s.visible = true;
       if (orbRef.current) orbRef.current.style.display = 'block';
       if (trailRef.current) trailRef.current.style.display = 'block';
       if (glowRef.current) glowRef.current.style.display = 'block';
     };
-
     const tick = () => {
       s.ox += (s.mx - s.ox) * 1.0;
       s.oy += (s.my - s.oy) * 1.0;
@@ -251,10 +237,8 @@ function Cursor() {
         Math.sin(s.floatPhase * 1.7) * 1 +
         Math.sin(s.floatPhase * 0.5) * 1;
       const fy = s.oy + s.floatY;
-
       const scale = s.clicking ? 0.7 : s.hovering ? 1.55 : 1;
       const opacity = s.visible ? (s.hovering ? 0.95 : 0.82) : 0;
-
       if (orbRef.current) {
         orbRef.current.style.left = s.ox + 'px';
         orbRef.current.style.top = fy + 'px';
@@ -359,94 +343,52 @@ function Cursor() {
   );
 }
 
-/* ── Thin router shell — no hooks here, so early return is safe ── */
+/* ─────────────────────────────────────────────────────
+   Root App — wraps everything in BrowserRouter
+───────────────────────────────────────────────────── */
 export default function App() {
-  const verifyCertId = (() => {
-    const path = window.location.pathname;
-    const m = path.match(/^\/verify\/([A-Za-z0-9_%-]+)/);
-    return m ? decodeURIComponent(m[1]) : null;
-  })();
-
-  if (verifyCertId) {
-    return (
-      <CertificateVerifyPage
-        certificateId={verifyCertId}
-        onGoHome={() => {
-          window.history.pushState({}, '', '/');
-          window.location.reload();
-        }}
-      />
-    );
-  }
-
-  return <MainApp />;
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
+  );
 }
 
-/* ── Main app — all hooks live here, always called unconditionally ── */
-function MainApp() {
+/* ─────────────────────────────────────────────────────
+   AppShell — initialises global systems, reads location
+───────────────────────────────────────────────────── */
+function AppShell() {
+  const location = useLocation();
   const [cinDone, setCinDone] = useState(false);
-  const [activeTab, setActiveTab] = useState('Home');
-  const [mobile, setMobile] = useState(window.innerWidth <= 768);
-  const [wipeOn, setWipeOn] = useState(false);
-  const [wipePh, setWipePh] = useState('out');
-  const [page, setPage] = useState(null);
   const [eventsData, setEventsData] = useState(() => getLocalEvents(fallbackEvents));
-  const [searchOpen, setSearchOpen] = useState(false); // 🔍 Search state
-  const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const { resolvedTheme: theme } = useTheme();
   const { isOpen: isTerminalOpen, closeTerminal } = useDeveloperMode();
 
-  // Initialize socket for real-time content updates from admin dashboard
+  // Skip cinematic opening for deep links (anything except "/")
+  useEffect(() => {
+    if (location.pathname !== '/') {
+      setCinDone(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Socket + cross-origin localStorage sync
   useEffect(() => {
     const socket = initializeSocket();
     if (socket) {
       joinRoom('events-room');
       joinRoom('notifications-room');
     }
-
-    // Initialize cross-origin localStorage sync bridge for offline mode
     initStorageSyncBridge();
-
-    // Cross-origin localStorage bridge: listen for postMessage from admin dashboard iframe
     const onPostMessage = (e) => {
       if (e.data && e.data.type === 'ns-content-updated' && e.data.key) {
         window.dispatchEvent(new Event('ns-content-updated'));
       }
     };
     window.addEventListener('message', onPostMessage);
-
-    return () => {
-      window.removeEventListener('message', onPostMessage);
-    };
+    return () => window.removeEventListener('message', onPostMessage);
   }, []);
 
-  useEffect(() => {
-    const path = window.location.pathname;
-    const match = path.match(/^\/p\/([a-zA-Z0-9_-]+)/);
-    if (match) {
-      const name = match[1];
-      setPage({ type: 'portfolio', username: name });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (cinDone) {
-      const initPush = async () => {
-        try {
-          const { initializePushNotifications } = await import('./utils/pushNotificationClient');
-          const vapidKey =
-            import.meta.env.VITE_VAPID_PUBLIC_KEY ||
-            'BFG7-T9CszX7v2Xg707l3qTNY2p5N1N4iO3J8t5vJv5O7g7i5r5v5i5v5o5r5i5v5r5e5s5w5s';
-          await initializePushNotifications(vapidKey);
-        } catch (err) {
-          console.warn('Push notification initialization skipped or failed gracefully:', err);
-        }
-      };
-      const timer = setTimeout(initPush, 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [cinDone]);
-
+  // Events data fetching
   useEffect(() => {
     let alive = true;
     const base = (import.meta?.env?.VITE_API_BASE || '').replace(/\/+$/, '');
@@ -460,7 +402,6 @@ function MainApp() {
     }
 
     const url = `${base}/api/content/events`;
-
     const fetchEvents = () => {
       apiClient(url)
         .then((data) => {
@@ -476,25 +417,19 @@ function MainApp() {
               data.length ? mergeEvents(fallbackEvents, data) : getLocalEvents(fallbackEvents)
             );
           } else {
-            console.warn('Malformed API response for events:', data);
             setEventsData(getLocalEvents(fallbackEvents));
           }
         })
-        .catch((err) => {
+        .catch(() => {
           if (!alive) return;
-          console.error('Failed to fetch events:', err);
           setEventsData((prev) => (prev?.length ? prev : getLocalEvents(fallbackEvents)));
         });
     };
 
     fetchEvents();
     const interval = setInterval(fetchEvents, 4000);
-
-    // Socket: refetch immediately when admin updates events/activities
     const onContentUpdated = (data) => {
-      if (data?.type === 'events' || data?.type === 'activities') {
-        fetchEvents();
-      }
+      if (data?.type === 'events' || data?.type === 'activities') fetchEvents();
     };
     on('content:updated', onContentUpdated);
 
@@ -505,39 +440,36 @@ function MainApp() {
     };
   }, []);
 
-  // useEffect(()=>{
-  //   const btn = document.getElementById('back-to-top');
-  //   if (!btn) return;
-  //   const fn = () => btn.classList.toggle('visible', window.scrollY > 400);
-  //   window.addEventListener('scroll', fn, { passive:true });
-  //   btn.addEventListener('click', () => window.scrollTo({ top:0, behavior:'smooth' }));
-  //   return () => window.removeEventListener('scroll', fn);
-  // }, []);
-
+  // Push notifications
   useEffect(() => {
-    if (page) return;
-    const nh = mobile ? MNH : DNH;
-    const fn = () => {
-      const sy = window.scrollY + nh + 30;
-      for (let i = TABS.length - 1; i >= 0; i--) {
-        const el = document.getElementById(`section-${TABS[i].toLowerCase()}`);
-        if (el && el.offsetTop <= sy) {
-          setActiveTab(TABS[i]);
-          break;
-        }
+    if (!cinDone) return;
+    const initPush = async () => {
+      try {
+        const { initializePushNotifications } = await import('./utils/pushNotificationClient');
+        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+        if (vapidKey) await initializePushNotifications(vapidKey);
+      } catch (err) {
+        console.warn('Push notification initialization skipped:', err);
       }
     };
-    window.addEventListener('scroll', fn, { passive: true });
-    return () => window.removeEventListener('scroll', fn);
-  }, [mobile, page]);
+    const timer = setTimeout(initPush, 3500);
+    return () => clearTimeout(timer);
+  }, [cinDone]);
 
+  /* ── SW update prompt ── */
+  const [swUpdateFn, setSwUpdateFn] = useState(null);
   useEffect(() => {
-    const fn = () => setMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', fn, { passive: true });
-    return () => window.removeEventListener('resize', fn);
+    const handle = (e) => {
+      if (e.detail?.updateSW) setSwUpdateFn(() => e.detail.updateSW);
+    };
+    window.addEventListener('nexasphere:sw-update', handle);
+    return () => window.removeEventListener('nexasphere:sw-update', handle);
   }, []);
 
-  /* ── Ctrl+K / Cmd+K opens search ── */
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [bookmarksOpen, setBookmarksOpen] = useState(false);
+
+  /* Ctrl+K / Cmd+K */
   useEffect(() => {
     const fn = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -549,247 +481,16 @@ function MainApp() {
     return () => window.removeEventListener('keydown', fn);
   }, []);
 
-  useEffect(() => {
-    if (!cinDone) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting && !e.target.classList.contains('fired')) {
-            e.target.classList.add('fired');
-            e.target.addEventListener(
-              'animationend',
-              () => {
-                e.target.style.opacity = '1';
-                e.target.style.transform = 'none';
-              },
-              { once: true }
-            );
-            obs.unobserve(e.target);
-          }
-        });
-      },
-      { threshold: 0.09, rootMargin: '0px 0px -36px 0px' }
-    );
-    document
-      .querySelectorAll('.pop-in,.pop-left,.pop-right,.pop-scale,.pop-flip,.pop-word,.pop-num')
-      .forEach((el) => obs.observe(el));
-
-    const btns = document.querySelectorAll('.mag-btn');
-    const onMove = (e) => {
-      btns.forEach((btn) => {
-        const rect = btn.getBoundingClientRect();
-        const dx = e.clientX - (rect.left + rect.width / 2);
-        const dy = e.clientY - (rect.top + rect.height / 2);
-        const d = Math.sqrt(dx * dx + dy * dy);
-        btn.style.transform =
-          d < 88
-            ? `translate(${((dx * (88 - d)) / 88) * 0.32}px,${((dy * (88 - d)) / 88) * 0.32}px)`
-            : '';
-      });
-      document.querySelectorAll('.activity-card').forEach((card) => {
-        const rect = card.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const dx = e.clientX - cx;
-        const dy = e.clientY - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const maxDist = Math.max(rect.width, rect.height) * 0.9;
-        if (dist < maxDist) {
-          const intensity = (1 - dist / maxDist) * 6;
-          card.style.setProperty('--rx', ((dx / rect.width) * intensity).toFixed(2));
-          card.style.setProperty('--ry', ((-dy / rect.height) * intensity).toFixed(2));
-        } else {
-          card.style.setProperty('--rx', '0');
-          card.style.setProperty('--ry', '0');
-        }
-      });
-    };
-    window.addEventListener('mousemove', onMove, { passive: true });
-    return () => {
-      obs.disconnect();
-      window.removeEventListener('mousemove', onMove);
-    };
-  }, [cinDone, page]);
-
-  useInteractionEffects(cinDone, page);
-  useBackToTop();
-
-  // Add direct URL parsing for workspace route
-  useEffect(() => {
-    if (window.location.pathname.startsWith('/workspace/')) {
-      const roomId = window.location.pathname.split('/workspace/')[1];
-      if (roomId) {
-        setCinDone(true);
-        setPage({ type: 'workspace', roomId });
-      }
-    }
-  }, []);
-
-  useNsReveal([cinDone, page]);
-  useHeroParallax();
-  useNavScrollTint();
-  useGlobalMouseParallax();
-  useMagneticCards();
-
-  const nav = useCallback((fn) => {
-    setWipeOn(true);
-    setWipePh('out');
-    setTimeout(() => {
-      fn();
-      window.scrollTo({ top: 0 });
-      requestAnimationFrame(() => {
-        setWipePh('in');
-        setTimeout(() => setWipeOn(false), 340);
-      });
-    }, 275);
-  }, []);
-
-  const onTab = useCallback(
-    (tab) => {
-      if (
-        [
-          'Dashboard',
-          'Analytics',
-          'Projects',
-          'Roadmaps',
-          'Portfolio',
-          'Collab',
-          'About',
-          'Team',
-          'Contact',
-        ].includes(tab)
-      ) {
-        nav(() => {
-          setPage({ type: 'section', section: tab });
-          setActiveTab(tab);
-        });
-        return;
-      }
-
-      if (!page) {
-        // Already on home page, scroll directly without full page transition
-        setActiveTab(tab);
-        const el = document.getElementById(`section-${tab.toLowerCase()}`);
-        if (el) {
-          window.scrollTo({
-            top: el.offsetTop - (mobile ? MNH : DNH),
-            behavior: 'smooth',
-          });
-        } else if (tab === 'Home') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      } else {
-        // Transition back to main page, then scroll
-        nav(() => {
-          setPage(null);
-          setActiveTab(tab);
-          setTimeout(() => {
-            const el = document.getElementById(`section-${tab.toLowerCase()}`);
-            if (el) {
-              window.scrollTo({
-                top: el.offsetTop - (mobile ? MNH : DNH),
-                behavior: 'smooth',
-              });
-            } else if (tab === 'Home') {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-          }, 50);
-        });
-      }
-    },
-    [nav, mobile, page]
-  );
-
-  const onNavigate = useCallback(
-    (type, title) => {
-      if (type === 'activity') nav(() => setPage({ type: 'activity', activityKey: title }));
-    },
-    [nav]
-  );
-
-  const onEvent = useCallback(
-    (ev) => {
-      nav(() => setPage((p) => ({ ...p, type: 'event', event: ev })));
-    },
-    [nav]
-  );
-
-  const onKSSClick = useCallback(
-    (ev) => {
-      nav(() => setPage({ type: 'event', activityKey: 'Insight Session', event: ev }));
-    },
-    [nav]
-  );
-
-  const onBackAct = useCallback(() => {
-    nav(() => setPage((p) => ({ type: 'activity', activityKey: p.activityKey })));
-  }, [nav]);
-
-  const onBackMain = useCallback(() => {
-    nav(() => {
-      setPage(null);
-      setTimeout(() => {
-        const el = document.getElementById('section-activities');
-        if (!el) return;
-        window.scrollTo({
-          top: el.offsetTop - (mobile ? MNH : DNH),
-          behavior: 'smooth',
-        });
-      }, 50);
-    });
-  }, [nav, mobile]);
-
-  const onBackToSection = useCallback(
-    (section) => {
-      nav(() => setPage({ type: 'section', section }));
-    },
-    [nav]
-  );
-
-  const openApply = useCallback(() => {
-    nav(() => setPage({ type: 'apply' }));
-  }, [nav]);
-
-  const openJoin = useCallback(() => {
-    nav(() => setPage({ type: 'join' }));
-  }, [nav]);
-
-  const onBackHome = useCallback(() => {
-    window.history.pushState({}, '', '/');
-    nav(() => {
-      setPage(null);
-      setActiveTab('Home');
-      window.scrollTo({ top: 0 });
-    });
-  }, [nav]);
-
-  const nh = mobile ? MNH : DNH;
-  const cur = page?.activityKey ? activityPages[page.activityKey] : null;
-
-  /* ── SW update prompt state ────────────────────────────────────────────── */
-  const [swUpdateFn, setSwUpdateFn] = useState(null);
-
-  useEffect(() => {
-    const handleSwUpdate = (e) => {
-      if (e.detail?.updateSW) setSwUpdateFn(() => e.detail.updateSW);
-    };
-    window.addEventListener('nexasphere:sw-update', handleSwUpdate);
-    return () => window.removeEventListener('nexasphere:sw-update', handleSwUpdate);
-  }, []);
-
   return (
     <BookmarkProvider>
-      {/* ── PWA Components ── */}
+      {/* PWA Components */}
       <OfflineBanner />
       <InstallPrompt />
       {swUpdateFn && <UpdatePrompt updateSW={swUpdateFn} />}
 
-      {/* Chatbot – kept at very top */}
       <Chatbot />
 
-      {/* ── Loading background: prevents white-flash on fast devices while
-           cinDone is false. Z-index sits beneath the CinematicOpening (z 9999)
-           but above everything else. Fades out once the opening completes. ── */}
+      {/* Loading screen — prevents white-flash during cinematic opening */}
       <div
         aria-hidden="true"
         style={{
@@ -807,11 +508,206 @@ function MainApp() {
 
       {cinDone && <ScrollProgress />}
       <Cursor />
-      <Wipe on={wipeOn} ph={wipePh} />
 
+      {/* Route-aware main content */}
+      <MainRouter
+        cinDone={cinDone}
+        setCinDone={setCinDone}
+        theme={theme}
+        eventsData={eventsData}
+        searchOpen={searchOpen}
+        setSearchOpen={setSearchOpen}
+        bookmarksOpen={bookmarksOpen}
+        setBookmarksOpen={setBookmarksOpen}
+        isTerminalOpen={isTerminalOpen}
+        closeTerminal={closeTerminal}
+      />
+    </BookmarkProvider>
+  );
+}
+
+/* ─────────────────────────────────────────────────────
+   MainRouter — renders the Navbar + Routes
+───────────────────────────────────────────────────── */
+function MainRouter({
+  cinDone,
+  setCinDone,
+  theme,
+  eventsData,
+  searchOpen,
+  setSearchOpen,
+  bookmarksOpen,
+  setBookmarksOpen,
+  isTerminalOpen,
+  closeTerminal,
+}) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [mobile, setMobile] = useState(window.innerWidth <= 768);
+  const [wipeOn, setWipeOn] = useState(false);
+  const [wipePh, setWipePh] = useState('out');
+  const [activeTab, setActiveTab] = useState('Home');
+
+  useEffect(() => {
+    const fn = () => setMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', fn, { passive: true });
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
+  // Sync activeTab with current URL
+  useEffect(() => {
+    const pathMap = {
+      '/': 'Home',
+      '/activities': 'Activities',
+      '/events': 'Events',
+      '/projects': 'Projects',
+      '/roadmaps': 'Roadmaps',
+      '/portfolio': 'Portfolio',
+      '/collab': 'Collab',
+      '/about': 'About',
+      '/team': 'Team',
+      '/contact': 'Contact',
+      '/dashboard': 'Dashboard',
+      '/analytics': 'Analytics',
+      '/apply': 'Apply',
+      '/join': 'Join',
+    };
+    const tab = pathMap[location.pathname] || 'Home';
+    setActiveTab(tab);
+  }, [location.pathname]);
+
+  // Scroll-spy on home page
+  useEffect(() => {
+    if (location.pathname !== '/') return;
+    const HOME_SECTIONS = ['Home', 'Activities', 'Events', 'About', 'Team', 'Contact'];
+    const nh = mobile ? MNH : DNH;
+    const fn = () => {
+      const sy = window.scrollY + nh + 30;
+      for (let i = HOME_SECTIONS.length - 1; i >= 0; i--) {
+        const el = document.getElementById(`section-${HOME_SECTIONS[i].toLowerCase()}`);
+        if (el && el.offsetTop <= sy) {
+          setActiveTab(HOME_SECTIONS[i]);
+          break;
+        }
+      }
+    };
+    window.addEventListener('scroll', fn, { passive: true });
+    return () => window.removeEventListener('scroll', fn);
+  }, [mobile, location.pathname]);
+
+  useInteractionEffects(cinDone, location.pathname !== '/');
+  useBackToTop();
+  useNsReveal([cinDone, location.pathname]);
+  useHeroParallax();
+  useNavScrollTint();
+  useGlobalMouseParallax();
+  useMagneticCards();
+
+  /* ── Wipe-transition navigate ── */
+  const nav = useCallback(
+    (path, fn) => {
+      setWipeOn(true);
+      setWipePh('out');
+      setTimeout(() => {
+        if (fn) fn();
+        if (path) navigate(path);
+        window.scrollTo({ top: 0 });
+        requestAnimationFrame(() => {
+          setWipePh('in');
+          setTimeout(() => setWipeOn(false), 340);
+        });
+      }, 275);
+    },
+    [navigate]
+  );
+
+  /* ── Tab click handler ── */
+  const onTab = useCallback(
+    (tab) => {
+      const routeMap = {
+        Dashboard: '/dashboard',
+        Analytics: '/analytics',
+        Activities: '/activities',
+        Events: '/events',
+        Projects: '/projects',
+        Roadmaps: '/roadmaps',
+        Portfolio: '/portfolio',
+        Collab: '/collab',
+        About: '/about',
+        Team: '/team',
+        Contact: '/contact',
+      };
+      const targetPath = routeMap[tab];
+      if (targetPath) {
+        nav(targetPath);
+        return;
+      }
+      if (tab === 'Home') {
+        if (location.pathname !== '/') {
+          nav('/');
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        return;
+      }
+      // Home-page scroll targets
+      if (location.pathname === '/') {
+        setActiveTab(tab);
+        const el = document.getElementById(`section-${tab.toLowerCase()}`);
+        if (el) {
+          window.scrollTo({
+            top: el.offsetTop - (mobile ? MNH : DNH),
+            behavior: 'smooth',
+          });
+        }
+      } else {
+        nav('/', () => {
+          setTimeout(() => {
+            const el = document.getElementById(`section-${tab.toLowerCase()}`);
+            if (el) {
+              window.scrollTo({
+                top: el.offsetTop - (mobile ? MNH : DNH),
+                behavior: 'smooth',
+              });
+            }
+          }, 50);
+        });
+      }
+    },
+    [nav, mobile, location.pathname]
+  );
+
+  const openApply = useCallback(() => nav('/apply'), [nav]);
+  const openJoin = useCallback(() => nav('/join'), [nav]);
+  const onBackHome = useCallback(() => nav('/'), [nav]);
+
+  const nh = mobile ? MNH : DNH;
+
+  const onNavigate = useCallback(
+    (type, title) => {
+      if (type === 'activity') nav(`/activities/${encodeURIComponent(title)}`);
+    },
+    [nav]
+  );
+
+  const onKSSClick = useCallback(
+    (ev) => {
+      nav('/events', () => {
+        // Store the event to auto-open in session storage
+        sessionStorage.setItem('ns-open-event', JSON.stringify(ev));
+      });
+    },
+    [nav]
+  );
+
+  return (
+    <>
       {cinDone && <AmbientOrbs theme={theme} />}
       {cinDone && <GeometricGridBackground theme={theme} />}
       {cinDone && <ParticleBackground theme={theme} />}
+      <Wipe on={wipeOn} ph={wipePh} />
+
       {cinDone && (
         <Navbar
           activeTab={activeTab}
@@ -824,81 +720,213 @@ function MainApp() {
       )}
 
       <main style={{ paddingTop: nh, position: 'relative', zIndex: 1 }}>
-        {page ? (
-          <PageIn k={page.type + (page.section || page.activityKey)}>
-            {page.section === 'Dashboard' && <DashboardPage onBack={onBackHome} />}
-            {page.section === 'Analytics' && <AnalyticsPage onBack={onBackHome} />}
-            {page.section === 'Activities' && (
-              <ActivitiesPage onNavigate={onNavigate} onBack={onBackHome} />
-            )}
-            {page.section === 'Events' && (
-              <EventsPage onBack={onBackHome} onEventClick={onKSSClick} events={eventsData} />
-            )}
-            {page.section === 'Projects' && <ProjectsPage onBack={onBackHome} />}
-            {page.section === 'Roadmaps' && <RoadmapsPage onBack={onBackHome} />}
-            {page.section === 'Portfolio' && <PortfolioBuilder />}
-            {page.section === 'Collab' && <CollabPage onBack={onBackHome} />}
-            {page.section === 'About' && <AboutPage onBack={onBackHome} />}
-            {page.section === 'Team' && <TeamPage onBack={onBackHome} onApply={openApply} />}
-            {page.section === 'Contact' && <ContactPage onBack={onBackHome} />}
-            {page.type === 'activity' && cur && (
-              <ActivityDetailPage activity={cur} onBack={onBackMain} onSelectEvent={onEvent} />
-            )}
-            {page.type === 'apply' && <RecruitmentPage onBack={onBackHome} />}
-            {page.type === 'join' && <MembershipPage onBack={onBackHome} />}
-            {page.type === 'admin' && <AdminPage onBack={onBackHome} />}
-            {page.type === 'event' && page.event && (
-              <EventDetailPage
-                event={page.event}
-                onBack={page.activityKey ? onBackAct : onBackMain}
-              />
-            )}
-            {page.type === 'portfolio' && (
-              <PublicPortfolio username={page.username} onBack={onBackHome} />
-            )}
-            {page.type === 'workspace' && (
-              <WorkspacePage roomId={page.roomId} onBack={onBackHome} />
-            )}
-            {page.type &&
-              !['section', 'activity', 'event', 'apply', 'join', 'portfolio', 'workspace'].includes(
-                page.type
-              ) && <NotFoundPage onGoHome={onBackHome} />}
-          </PageIn>
-        ) : (
-          cinDone && (
-            <PageIn k="main">
-              <HeroSection
-                onTabChange={onTab}
-                onApply={openApply}
-                onJoin={openJoin}
-                theme={theme}
-              />
-              <SectionDivider />
-              <ActivitiesSection onNavigate={onNavigate} />
-              <SectionDivider />
-              <EventsSection onEventClick={onKSSClick} events={eventsData} />
-              <SectionDivider />
-              <AboutSection />
-              <SectionDivider />
-              <TeamSection onApply={openApply} />
-              <div id="section-contact">
-                <Footer
-                  onAdmin={() => nav(() => setPage({ type: 'admin' }))}
-                  onProjects={() => onTab('Projects')}
-                  onRoadmaps={() => onTab('Roadmaps')}
+        <Suspense fallback={<PageLoadingSpinner />}>
+          <Routes>
+            {/* ── Home (scrollable sections) ── */}
+            <Route
+              path="/"
+              element={
+                cinDone ? (
+                  <PageIn k="home">
+                    <HeroSection
+                      onTabChange={onTab}
+                      onApply={openApply}
+                      onJoin={openJoin}
+                      theme={theme}
+                    />
+                    <SectionDivider />
+                    <ActivitiesSection onNavigate={onNavigate} />
+                    <SectionDivider />
+                    <EventsSection onEventClick={onKSSClick} events={eventsData} />
+                    <SectionDivider />
+                    <AboutSection />
+                    <SectionDivider />
+                    <TeamSection onApply={openApply} />
+                    <div id="section-contact">
+                      <Footer
+                        onAdmin={() => nav('/admin')}
+                        onProjects={() => onTab('Projects')}
+                        onRoadmaps={() => onTab('Roadmaps')}
+                      />
+                    </div>
+                  </PageIn>
+                ) : null
+              }
+            />
+
+            {/* ── Activities ── */}
+            <Route
+              path="/activities"
+              element={
+                <PageIn k="activities">
+                  <ActivitiesPage onNavigate={onNavigate} onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+            <Route
+              path="/activities/:activityKey"
+              element={
+                <ActivityDetailWrapper
+                  onBack={() => nav('/activities')}
+                  onSelectEvent={onKSSClick}
                 />
-              </div>
-            </PageIn>
-          )
-        )}
+              }
+            />
+
+            {/* ── Events ── */}
+            <Route
+              path="/events"
+              element={
+                <PageIn k="events">
+                  <EventsPage onBack={onBackHome} onEventClick={onKSSClick} events={eventsData} />
+                </PageIn>
+              }
+            />
+            <Route
+              path="/events/:eventId"
+              element={<EventDetailWrapper onBack={() => nav('/events')} events={eventsData} />}
+            />
+
+            {/* ── Dashboard ── */}
+            <Route
+              path="/dashboard"
+              element={
+                <PageIn k="dashboard">
+                  <DashboardPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Analytics ── */}
+            <Route
+              path="/analytics"
+              element={
+                <PageIn k="analytics">
+                  <AnalyticsPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Projects ── */}
+            <Route
+              path="/projects"
+              element={
+                <PageIn k="projects">
+                  <ProjectsPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Roadmaps ── */}
+            <Route
+              path="/roadmaps"
+              element={
+                <PageIn k="roadmaps">
+                  <RoadmapsPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Portfolio Builder ── */}
+            <Route
+              path="/portfolio"
+              element={
+                <PageIn k="portfolio">
+                  <PortfolioBuilder />
+                </PageIn>
+              }
+            />
+            {/* ── Public Portfolio ── */}
+            <Route path="/p/:username" element={<PublicPortfolioWrapper onBack={onBackHome} />} />
+
+            {/* ── Collab ── */}
+            <Route
+              path="/collab"
+              element={
+                <PageIn k="collab">
+                  <CollabPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── About ── */}
+            <Route
+              path="/about"
+              element={
+                <PageIn k="about">
+                  <AboutPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Team ── */}
+            <Route
+              path="/team"
+              element={
+                <PageIn k="team">
+                  <TeamPage onBack={onBackHome} onApply={openApply} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Contact ── */}
+            <Route
+              path="/contact"
+              element={
+                <PageIn k="contact">
+                  <ContactPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Recruitment / Apply ── */}
+            <Route
+              path="/apply"
+              element={
+                <PageIn k="apply">
+                  <RecruitmentPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Membership / Join ── */}
+            <Route
+              path="/join"
+              element={
+                <PageIn k="join">
+                  <MembershipPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── Certificate Verify ── */}
+            <Route path="/verify/:certId" element={<CertVerifyWrapper onGoHome={onBackHome} />} />
+
+            {/* ── Workspace (collaborative room) ── */}
+            <Route path="/workspace/:roomId" element={<WorkspaceWrapper onBack={onBackHome} />} />
+
+            {/* ── Admin (embedded, for quick access) ── */}
+            <Route
+              path="/admin"
+              element={
+                <PageIn k="admin">
+                  <AdminPage onBack={onBackHome} />
+                </PageIn>
+              }
+            />
+
+            {/* ── 404 ── */}
+            <Route path="*" element={<NotFoundPage onGoHome={onBackHome} />} />
+          </Routes>
+        </Suspense>
       </main>
 
-      {/* Back to top button */}
       {cinDone && <MoveToTop />}
 
-      {/* ── Floating Search Button (bottom-left) ── */}
+      {/* Floating Search Button */}
       {cinDone && (
         <button
+          id="search-fab"
           onClick={() => setSearchOpen(true)}
           aria-label="Open search"
           title="Search (Ctrl+K)"
@@ -944,7 +972,7 @@ function MainApp() {
         </button>
       )}
 
-      {/* ── Search Overlay ── */}
+      {/* Search Overlay */}
       <SearchBar
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
@@ -954,7 +982,7 @@ function MainApp() {
         onEventClick={onKSSClick}
       />
 
-      {/* ── Developer Terminal ── */}
+      {/* Developer Terminal */}
       <Terminal
         isOpen={isTerminalOpen}
         onClose={closeTerminal}
@@ -963,7 +991,7 @@ function MainApp() {
         onNavigate={onTab}
       />
 
-      {/* ── Bookmarks Drawer ── */}
+      {/* Bookmarks Drawer */}
       <BookmarksDrawer
         isOpen={bookmarksOpen}
         onClose={() => setBookmarksOpen(false)}
@@ -973,7 +1001,91 @@ function MainApp() {
           else if (type === 'Roadmap') onTab('Roadmaps');
         }}
       />
+
       {cinDone && <FloatingDock />}
-    </BookmarkProvider>
+    </>
+  );
+}
+
+/* ─────────────────────────────────────────────────────
+   Route wrapper components (URL param readers)
+───────────────────────────────────────────────────── */
+
+function ActivityDetailWrapper({ onBack, onSelectEvent }) {
+  const { activityKey } = useParams();
+  const decoded = decodeURIComponent(activityKey || '');
+  const activity = activityPages[decoded];
+  if (!activity) return <NotFoundPage onGoHome={onBack} />;
+  return (
+    <PageIn k={`activity-${decoded}`}>
+      <ActivityDetailPage activity={activity} onBack={onBack} onSelectEvent={onSelectEvent} />
+    </PageIn>
+  );
+}
+
+function EventDetailWrapper({ onBack, events }) {
+  const { eventId } = useParams();
+  const event = (events || []).find(
+    (e) => String(e.id) === eventId || encodeURIComponent(e.title) === eventId
+  );
+  if (!event) return <NotFoundPage onGoHome={onBack} />;
+  return (
+    <PageIn k={`event-${eventId}`}>
+      <EventDetailPage event={event} onBack={onBack} />
+    </PageIn>
+  );
+}
+
+function PublicPortfolioWrapper({ onBack }) {
+  const { username } = useParams();
+  return (
+    <PageIn k={`portfolio-${username}`}>
+      <PublicPortfolio username={username} onBack={onBack} />
+    </PageIn>
+  );
+}
+
+function CertVerifyWrapper({ onGoHome }) {
+  const { certId } = useParams();
+  return <CertificateVerifyPage certificateId={certId} onGoHome={onGoHome} />;
+}
+
+function WorkspaceWrapper({ onBack }) {
+  const { roomId } = useParams();
+  return (
+    <PageIn k={`workspace-${roomId}`}>
+      <WorkspacePage roomId={roomId} onBack={onBack} />
+    </PageIn>
+  );
+}
+
+/* ─────────────────────────────────────────────────────
+   Page loading spinner (Suspense fallback)
+───────────────────────────────────────────────────── */
+function PageLoadingSpinner() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh',
+        color: 'var(--t2)',
+        flexDirection: 'column',
+        gap: '16px',
+      }}
+    >
+      <div
+        style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          border: '3px solid rgba(204,17,17,0.2)',
+          borderTop: '3px solid #CC1111',
+          animation: 'spin 0.8s linear infinite',
+        }}
+      />
+      <span style={{ fontSize: '0.85rem', opacity: 0.6 }}>Loading…</span>
+    </div>
   );
 }
