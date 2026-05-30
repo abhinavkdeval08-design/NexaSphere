@@ -1,6 +1,5 @@
 package org.nexasphere.controller;
 
-import org.nexasphere.model.entity.CertificateEntity;
 import org.nexasphere.repository.CertificateRepository;
 import org.springframework.web.bind.annotation.*;
 

@@ -115,9 +115,9 @@ public class CertificatesController {
         int skipped = 0;
 
         for (Map<String, String> student : students) {
-            String email = student.getOrDefault("email", student.get("student_id", ""));
-            String name = student.getOrDefault("name", student.get("student_name", "Unknown"));
-            String roll = student.getOrDefault("rollNumber", student.get("student_id", ""));
+            String email = student.getOrDefault("email", student.getOrDefault("student_id", ""));
+            String name = student.getOrDefault("name", student.getOrDefault("student_name", "Unknown"));
+            String roll = student.getOrDefault("rollNumber", student.getOrDefault("student_id", ""));
 
             if (certRepo.existsByStudentEmailAndEventId(email, eventId)) {
                 skipped++;

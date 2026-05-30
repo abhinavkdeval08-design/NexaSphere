@@ -4,7 +4,7 @@
 
 export const events = [
   {
-    id: 1,
+    id: 'kss-153',
     name: 'KSS #153 — Knowledge Sharing Session',
     shortName: 'KSS #153',
     hasDetailPage: true,

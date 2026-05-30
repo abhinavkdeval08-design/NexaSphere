@@ -18,7 +18,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@SuppressWarnings("null") // Test code: MockMvc/Hamcrest/TokenService return types lack @NonNull annotations
 class ActivityEventsControllerIT {
 
     @Autowired

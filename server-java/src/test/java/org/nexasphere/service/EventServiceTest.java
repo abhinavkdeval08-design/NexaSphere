@@ -28,7 +28,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("null") // Test code: Mockito's getArgument() and repo mocks lack @NonNull annotations
+@SuppressWarnings("null")
 class EventServiceTest {
 
     @Mock

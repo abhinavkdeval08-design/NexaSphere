@@ -1,30 +1,26 @@
-# Stage 1: Install dependencies
-FROM node:20-alpine AS builder
-
-WORKDIR /usr/src/app
-
-# Copy package files
+# Stage 1: Install production dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
 COPY package*.json ./
+RUN npm ci --omit=dev --prefer-offline
 
-# Install only production dependencies
-RUN npm ci --omit=dev
-
-# Stage 2: Production runtime
+# Stage 2: Production runtime image
 FROM node:20-alpine AS production
-
-# Set Node environment to production
 ENV NODE_ENV=production
+WORKDIR /app
 
-WORKDIR /usr/src/app
+# Copy production node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
 
-# Copy production dependencies from builder
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-
-# Copy application source code
+# Copy application source (excluding .env, test files, etc. via .dockerignore)
 COPY . .
 
-# Expose the port the app runs on
+# Port is read from the PORT env variable at runtime (defaults to 8787).
+# Render/Railway automatically sets PORT=10000.
 EXPOSE 8787
 
-# Start the server
+# Health check — lets Docker know the container is ready
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://localhost:${PORT:-8787}/health || exit 1
+
 CMD ["node", "index.js"]
