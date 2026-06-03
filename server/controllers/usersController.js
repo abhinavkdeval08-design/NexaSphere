@@ -1,13 +1,20 @@
 import { usersRepository } from '../repositories/usersRepository.js';
 import { toPublicUserDTO, toAdminUserDTO } from '../utils/userSerializer.js';
 
+const MAX_LIMIT = 100;
+const ALLOWED_ROLES = ['admin', 'user', 'moderator', 'member'];
+
+function parsePaginationAndFilters(query) {
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(query.limit, 10) || 20));
+  const role = query.role && ALLOWED_ROLES.includes(query.role) ? query.role : undefined;
+  return { page, limit, role };
+}
+
 export async function getPublicUsers(req, res) {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const role = req.query.role || null;
+    const { page, limit, role } = parsePaginationAndFilters(req.query);
     
-    // Pass pagination to repo (assuming repo supports it or will be updated)
     const rawUsers = await usersRepository.getAllPublicUsers({ page, limit, role });
     const safeUsers = rawUsers.map(toPublicUserDTO);
     return res.json({ users: safeUsers, page, limit });
@@ -19,9 +26,7 @@ export async function getPublicUsers(req, res) {
 
 export async function getAdminUsers(req, res) {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const role = req.query.role || null;
+    const { page, limit, role } = parsePaginationAndFilters(req.query);
     
     const rawUsers = await usersRepository.getAllUsersAdmin({ page, limit, role });
     const safeUsers = rawUsers.map(toAdminUserDTO);
