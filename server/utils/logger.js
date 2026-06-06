@@ -3,9 +3,10 @@
  * Structured logging for all backend operations
  */
 
-import winston from "winston";
-import path from "path";
-import DailyRotateFile from "winston-daily-rotate-file";
+import winston from 'winston';
+import { appContext } from '../config/appContext.js';
+import path from 'path';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 // Create logs directory if it doesn't exist
 // Create logs directory if it doesn't exist (with permission handling)
@@ -45,23 +46,32 @@ const levels = {
 
 // Define colors for console output
 const colors = {
-  error: "red",
-  warn: "yellow",
-  info: "green",
-  http: "magenta",
-  debug: "white",
+  error: 'red',
+  warn: 'yellow',
+  info: 'green',
+  http: 'magenta',
+  debug: 'white',
 };
 
 winston.addColors(colors);
 
-// Define log format
-const format = winston.format.combine(
+// Define transports
+// 1. Define the base format WITHOUT colorize
+const baseFileFormat = winston.format.combine(
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss:ms" }),
   winston.format.errors({ stack: true }),
+  winston.format.splat(),
   winston.format.printf((info) => {
     const { timestamp, level, message, ...args } = info;
+    const ts = typeof timestamp === 'string' ? timestamp : new Date().toISOString();
 
-    const ts = timestamp.slice(0, 19).replace("T", " ");
+    // Strip out internal Winston symbol keys so they don't print as empty objects
+    const cleanArgs = Object.keys(args).reduce((acc, key) => {
+      if (typeof key === "string" || typeof key === "number") {
+        acc[key] = args[key];
+      }
+      return acc;
+    }, {});
 
     // REMOVED 'null, 2' to keep metadata on a single unified line
     return `${ts} [${level}]: ${message} ${
@@ -75,7 +85,7 @@ const activeTransports = [
   new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize({ all: true }),
-      format
+      baseFileFormat
     ),
   }),
 ];
@@ -103,7 +113,7 @@ if (isStorageWritable) {
 }
 // Create logger instance
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || "info",
+  level: process.env.LOG_LEVEL || 'info',
   levels,
   format,
   transports: activeTransports, 
@@ -113,7 +123,7 @@ const logger = winston.createLogger({
       datePattern: "YYYY-MM-DD",
       maxSize: "20m",
       maxFiles: "14d",
-      format: winston.format.uncolorize(),
+      format: baseFileFormat, //  FIX: Ensures clean exception dumps
       utc: true,
     }),
   ] : undefined, 
@@ -123,7 +133,7 @@ const logger = winston.createLogger({
       datePattern: "YYYY-MM-DD",
       maxSize: "20m",
       maxFiles: "14d",
-      format: winston.format.uncolorize(),
+      format: baseFileFormat, //  FIX: Ensures clean rejection dumps
       utc: true,
     }),
   ] : undefined, 
