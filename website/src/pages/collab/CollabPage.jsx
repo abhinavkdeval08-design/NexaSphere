@@ -64,7 +64,11 @@ export default function CollabPage({ onBack }) {
       })
       .finally(() => setLoading(false));
   }, []);
-
+  useEffect(() => {
+    if (activeTab !== 'find-team') {
+      setSearch('');
+    }
+  }, [activeTab]);
   const handleJoinSubmit = async (requestData) => {
     const requestsUrl = buildUrl(getApiBase(), '/api/collab/requests');
     if (!requestsUrl) return;
