@@ -1,4 +1,4 @@
-import { withDb } from '../repositories/db.js';
+import { withDb } from './db.js';
 import { HAS_SUPABASE } from '../storage/supabaseClient.js';
 
 export const studentUsersRepository = {
