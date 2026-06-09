@@ -114,7 +114,7 @@ if (isStorageWritable) {
     })
   );
 }
-// Create logger instance
+
 // Create logger instance
 const logger = winston.createLogger({
   level: globalGatekeeperLevel, // <-- Change this line

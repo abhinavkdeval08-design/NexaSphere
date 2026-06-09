@@ -118,6 +118,12 @@ export function sanitizeCoreTeamMemberRecord(member = {}) {
 //     fields (skills, projects, roadmaps, badges, seoMetadata)
 // ============================================================
 
+function validateWhatsApp(value) {
+  return String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, 30);
+}
+
 const SAFE_URL_PROTOCOLS = /^(https?:\/\/|\/[^\/])/i;
 const URL_MAX_LENGTH = 2048;
 

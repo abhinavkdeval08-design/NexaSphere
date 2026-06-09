@@ -43,6 +43,11 @@ import { coreTeamService } from './services/coreTeamService.js';
 import notificationsService from './services/notificationsService.js';
 import { notificationPreferencesRepository } from './repositories/notificationPreferencesRepository.js';
 import { supabaseRequest, HAS_SUPABASE } from './storage/supabaseClient.js';
+import cookieParser from 'cookie-parser';
+import passport from './config/studentOAuth.js';
+import { studentUsersRepository } from './repositories/studentUsersRepository.js';
+import * as studentAuthController from './controllers/studentAuthController.js';
+import { requireStudentAuth } from './middleware/studentAuthMiddleware.js';
 
 validateLimiters();
 
@@ -78,23 +83,118 @@ const allowedOrigins = process.env.CORS_ORIGIN.split(',')
 
 app.use(
   helmet({
+    // Prevent MIME sniffing
+    noSniff: true,
+
+    // Prevent clickjacking
+    frameguard: {
+      action: 'deny',
+    },
+
+    // Hide X-Powered-By
+    hidePoweredBy: true,
+
+    // Disable old IE XSS filter
+    xssFilter: false,
+
+    // Restrict referrer leakage
+    referrerPolicy: {
+      policy: 'strict-origin-when-cross-origin',
+    },
+
+    // Enforce HTTPS in production
+    hsts:
+      process.env.NODE_ENV === 'production'
+        ? {
+            maxAge: 31536000,
+            includeSubDomains: true,
+            preload: true,
+          }
+        : false,
+
+    // Strict Content Security Policy
     contentSecurityPolicy: {
+      useDefaults: false,
+
       directives: {
+        // Default restriction
         defaultSrc: ["'self'"],
+
+        // Prevent inline scripts + third-party execution
         scriptSrc: ["'self'"],
+
+        // Allow styles from self only
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: [
-          "'self'",
-          process.env.FRONTEND_URL || 'http://localhost:5173',
-          `wss://${process.env.DOMAIN || 'localhost'}`,
-        ],
+
+        // Images
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+
+        // Fonts
+        fontSrc: ["'self'", 'https:', 'data:'],
+
+        // API/WebSocket connections
+        connectSrc: ["'self'", 'https:', 'wss:'],
+
+        // Block Flash/object/embed
         objectSrc: ["'none'"],
+
+        // Prevent <base> hijacking
+        baseUri: ["'self'"],
+
+        // Prevent iframe embedding
+        frameAncestors: ["'none'"],
+
+        // Restrict forms
+        formAction: ["'self'"],
+
+        // Prevent mixed content
         upgradeInsecureRequests: [],
+
+        // Restrict workers
+        workerSrc: ["'self'", 'blob:'],
+
+        // Restrict manifests
+        manifestSrc: ["'self'"],
+
+        // Restrict media
+        mediaSrc: ["'self'"],
+
+        // Restrict frames
+        frameSrc: ["'none'"],
+
+        // Restrict child browsing contexts
+        childSrc: ["'none'"],
       },
     },
+
+    // Safer cross-origin behavior
     crossOriginEmbedderPolicy: false,
+
+    crossOriginOpenerPolicy: {
+      policy: 'same-origin',
+    },
+
+    crossOriginResourcePolicy: {
+      policy: 'same-origin',
+    },
+
+    // Disable DNS prefetching
+    dnsPrefetchControl: {
+      allow: false,
+    },
+
+    // Prevent browser feature abuse
+    permissionsPolicy: {
+      features: {
+        geolocation: [],
+        microphone: [],
+        camera: [],
+        payment: [],
+        usb: [],
+        magnetometer: [],
+        gyroscope: [],
+      },
+    },
   })
 );
 app.use(cors({ origin: allowedOrigins, credentials: true }));
@@ -105,6 +205,7 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(morgan('combined'));
 app.use(performanceMonitor);
+app.use(cookieParser());
 
 // Global API rate limiter — protects all /api routes from request flooding
 app.use('/api', apiRateLimiter);
@@ -237,6 +338,14 @@ app.post('/api/admin/login', authRateLimiter, adminAuthMiddleware.login);
 app.post('/api/admin/logout', adminAuth, adminAuthMiddleware.logout);
 app.use('/api/admin/analytics', adminAuth, analyticsRouter);
 app.use('/api/admin/metrics', adminAuth, adminStreamRouter);
+
+// OAuth / SSO Student Auth Endpoints
+app.get('/api/auth/google', studentAuthController.googleAuth);
+app.get('/api/auth/google/callback', studentAuthController.googleCallback);
+app.get('/api/auth/github', studentAuthController.githubAuth);
+app.get('/api/auth/github/callback', studentAuthController.githubCallback);
+app.get('/api/auth/me', requireStudentAuth, studentAuthController.getMe);
+app.post('/api/auth/logout', studentAuthController.logout);
 
 // Event Admin Management
 app.get('/api/admin/events', adminAuth, eventsController.adminListEvents);
@@ -761,15 +870,12 @@ let server;
 
 if (process.env.NODE_ENV !== 'test') {
   if (!process.env.VERCEL) {
-    const boot = HAS_SUPABASE ? Promise.resolve() : ensureContentFile();
-    boot
-      .then(() => loadPersistedPushSubscriptions())
-      .then(() => {
-        server = app.listen(port, () => {
-          console.log(`NexaSphere server listening on http://localhost:${port}`);
-        });
-        initializeSocketIO(server);
+    const boot = HAS_SUPABASE ? studentUsersRepository.ensureSchema() : ensureContentFile();
+    boot.then(() => {
+      server = app.listen(port, () => {
+        console.log(`NexaSphere server listening on http://localhost:${port}`);
       });
+    });
   } else {
     loadPersistedPushSubscriptions();
     server = app.listen(port, () => {
