@@ -1,39 +1,20 @@
 const HTML_ESCAPE_MAP = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-  "`": "&#96;",
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+  '`': '&#96;',
 };
 
 function escapeHtml(value) {
-<<<<<<< HEAD
   return String(value ?? '')
     .replace(/[&<>"'`]/g, (character) => HTML_ESCAPE_MAP[character])
     .trim();
 }
 
-function sanitizeText(value, max = 4000) {
-  return escapeHtml(
-    String(value ?? '')
-      .trim()
-      .slice(0, max)
-  );
-}
-
-function sanitizeNullableText(value, max = 4000) {
-  const text = String(value ?? '')
-    .trim()
-    .slice(0, max);
-=======
-  return String(value ?? "")
-    .replace(/[&<>"'`]/g, (character) => HTML_ESCAPE_MAP[character])
-    .trim();
-}
-
 function toSafeString(value, max = 4000) {
-  return String(value ?? "")
+  return String(value ?? '')
     .trim()
     .slice(0, max);
 }
@@ -44,14 +25,13 @@ function sanitizeText(value, max = 4000) {
 
 function sanitizeNullableText(value, max = 4000) {
   const text = toSafeString(value, max);
->>>>>>> 1dd5929e (fix(rate-limit): enforce protection on public API routes)
   return text ? escapeHtml(text) : null;
 }
 
 function sanitizeTextArray(values, max = 40) {
   if (!Array.isArray(values)) {
-    return String(values || "")
-      .split(",")
+    return String(values || '')
+      .split(',')
       .map((entry) => sanitizeText(entry, max))
       .filter(Boolean)
       .slice(0, 12);
@@ -61,35 +41,28 @@ function sanitizeTextArray(values, max = 40) {
     .map((entry) => sanitizeText(entry, max))
     .filter(Boolean)
     .slice(0, 12);
-<<<<<<< HEAD
-=======
 }
 
 function normalizePhone(value) {
-  return String(value ?? "").replace(/[^\d]/g, "");
+  return String(value || '').replace(/[^\d]/g, '');
 }
 
 function isEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? "").trim());
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? '').trim());
 }
 
-function validateWhatsApp(value) {
-  const normalized = normalizePhone(value);
-  if (!/^\d{10}$/.test(normalized)) {
-    throw new Error("WhatsApp must be exactly 10 digits");
-  }
-  return normalized;
+function validateWhatsApp(str) {
+  const v = normalizePhone(str);
+  if (v.length !== 10) throw new Error('WhatsApp must be exactly 10 digits');
+  return v;
 }
 
-function validateSection(value) {
-  const normalized = String(value ?? "")
+function validateSection(str) {
+  const v = String(str || '')
     .trim()
     .toUpperCase();
-  if (!/^[A-Z]$/.test(normalized)) {
-    throw new Error("Section must be a single letter (A-Z)");
-  }
-  return normalized;
->>>>>>> 1dd5929e (fix(rate-limit): enforce protection on public API routes)
+  if (!/^[A-Z]$/.test(v)) throw new Error('Section must be a single letter (A-Z)');
+  return v;
 }
 
 export function sanitizeEventRecord(event = {}) {
@@ -99,7 +72,7 @@ export function sanitizeEventRecord(event = {}) {
     shortName: sanitizeText(event.shortName || event.name, 60),
     date: sanitizeText(event.date, 80),
     description: sanitizeText(event.description, 1200),
-    icon: sanitizeText(event.icon || "Pin", 32),
+    icon: sanitizeText(event.icon || 'Pin', 32),
     tags: sanitizeTextArray(event.tags, 40),
   };
 }
@@ -131,7 +104,6 @@ export function sanitizeCoreTeamMemberRecord(member = {}) {
   };
 }
 
-<<<<<<< HEAD
 // ============================================================
 // Portfolio sanitization (issue #969)
 //
@@ -145,15 +117,6 @@ export function sanitizeCoreTeamMemberRecord(member = {}) {
 //   * apply the same rules recursively to JSONB array/object
 //     fields (skills, projects, roadmaps, badges, seoMetadata)
 // ============================================================
-function toSafeString(value, max = 4000) {
-  return String(value ?? '')
-    .trim()
-    .slice(0, max);
-}
-
-function normalizePhone(value) {
-  return String(value || '').replace(/[^\d]/g, '');
-}
 
 const SAFE_URL_PROTOCOLS = /^(https?:\/\/|\/[^\/])/i;
 const URL_MAX_LENGTH = 2048;
@@ -164,13 +127,6 @@ const SCRIPT_PATTERN = /<script\b[^>]*>[\s\S]*?<\/script\s*>/gi;
 const STYLE_PATTERN = /<style\b[^>]*>[\s\S]*?<\/style\s*>/gi;
 const CONTROL_CHAR_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const NULL_BYTE_PATTERN = /\u0000/g;
-function validateSection(str) {
-  const v = String(str || '')
-    .trim()
-    .toUpperCase();
-  if (!/^[A-Z]$/.test(v)) throw new Error('Section must be a single letter (A-Z)');
-  return v;
-}
 
 function stripHtml(value) {
   if (value == null) return '';
@@ -188,13 +144,13 @@ function stripHtmlTruncated(value, max) {
   return stripHtml(value).trim().slice(0, max);
 }
 
+// Check if a URL uses a safe protocol (http, https, or relative)
 function isSafeUrl(value) {
   if (typeof value !== 'string') return false;
   const trimmed = value.trim();
   if (trimmed.length === 0) return false;
   if (trimmed.length > URL_MAX_LENGTH) return false;
-  // Reject known dangerous protocols explicitly.  The regex below
-  // also catches javascript:, data:, vbscript:, file:, etc.
+  // Reject known dangerous protocols explicitly.
   if (/^\s*(javascript|data|vbscript|file|about|chrome|jar|mocha):/i.test(trimmed)) {
     return false;
   }
@@ -283,6 +239,7 @@ function sanitizeRoadmap(roadmap) {
   return out;
 }
 
+// Sanitize single badge object
 function sanitizeBadge(badge) {
   if (!badge || typeof badge !== 'object') return null;
   const name = stripHtmlTruncated(badge.name, 120);
@@ -358,17 +315,26 @@ export function sanitizePortfolioRecord(data = {}) {
     out.skills = [];
   }
   if (Array.isArray(data.badges)) {
-    out.badges = data.badges.map(sanitizeBadge).filter(Boolean).slice(0, 100);
+    out.badges = data.badges
+      .map((badge) => sanitizeBadge(badge))
+      .filter(Boolean)
+      .slice(0, 100);
   } else {
     out.badges = [];
   }
   if (Array.isArray(data.projects)) {
-    out.projects = data.projects.map(sanitizeProject).filter(Boolean).slice(0, 50);
+    out.projects = data.projects
+      .map((project) => sanitizeProject(project))
+      .filter(Boolean)
+      .slice(0, 50);
   } else {
     out.projects = [];
   }
   if (Array.isArray(data.roadmaps)) {
-    out.roadmaps = data.roadmaps.map(sanitizeRoadmap).filter(Boolean).slice(0, 50);
+    out.roadmaps = data.roadmaps
+      .map((roadmap) => sanitizeRoadmap(roadmap))
+      .filter(Boolean)
+      .slice(0, 50);
   } else {
     out.roadmaps = [];
   }
@@ -386,22 +352,6 @@ export function isSafePortfolioUrl(value) {
   return isSafeUrl(value);
 }
 
-function validateWhatsApp(str) {
-  const v = String(str || '').replace(/[^\d]/g, '');
-  if (v.length !== 10) throw new Error('WhatsApp must be exactly 10 digits');
-  return v;
-}
-
-export {
-  escapeHtml,
-  sanitizeNullableText,
-  sanitizeText,
-  sanitizeTextArray,
-  stripHtml,
-  stripHtmlTruncated,
-  toSafeString,
-  normalizePhone,
-=======
 export {
   escapeHtml,
   isEmail,
@@ -409,8 +359,9 @@ export {
   sanitizeNullableText,
   sanitizeText,
   sanitizeTextArray,
+  stripHtml,
+  stripHtmlTruncated,
   toSafeString,
   validateSection,
->>>>>>> 1dd5929e (fix(rate-limit): enforce protection on public API routes)
   validateWhatsApp,
 };
