@@ -1,7 +1,5 @@
 import rateLimit from 'express-rate-limit';
 import logger from '../utils/logger.js';
-import rateLimit from 'express-rate-limit';
-import logger from '../utils/logger.js';
 
 const suspiciousIPs = new Map();
 
@@ -30,6 +28,9 @@ const FORM_MAX_REQUESTS = parsePositiveInt(process.env.RATE_LIMIT_MAX_REQUESTS, 
 // ---------------------------------------------------------------------------
 export const apiRateLimiter = rateLimit({
   windowMs: API_WINDOW_MS,
+  max: API_MAX_REQUESTS,
+  standardHeaders: true,
+  legacyHeaders: false,
   handler: (req, res, _next, options) => {
     logger.warn('Global API rate limit exceeded', {
       ip: req.ip,
@@ -51,21 +52,6 @@ export const apiRateLimiter = rateLimit({
       });
     }
 
-    res.status(options.statusCode).json({
-      error: 'Too many requests from this IP, please try again later.',
-    });
-  },
-  max: API_MAX_REQUESTS,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res, _next, options) => {
-    logger.warn('Global API rate limit exceeded', {
-      ip: req.ip,
-      path: req.originalUrl || req.path,
-      method: req.method,
-      limit: options.max,
-      windowMs: options.windowMs,
-    });
     res.status(options.statusCode).json({
       error: 'Too many requests from this IP, please try again later.',
     });

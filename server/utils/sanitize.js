@@ -51,12 +51,6 @@ function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value ?? '').trim());
 }
 
-function validateWhatsApp(str) {
-  const v = normalizePhone(str);
-  if (v.length !== 10) throw new Error('WhatsApp must be exactly 10 digits');
-  return v;
-}
-
 function validateSection(str) {
   const v = String(str || '')
     .trim()
