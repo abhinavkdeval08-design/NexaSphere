@@ -433,7 +433,7 @@ function _cleanupWorkspaceMembership(socketId) {
 
 /**
  * Emit an event to the admin role-scoped room(s) that have permission
- * to receive it.  Falls back to the legacy shared `admin-room` for
+ * to receive it. Falls back to the legacy shared `admin-room` for
  * `super_admin` so single-admin deployments continue working.
  *
  * @param {string|string[]} roles - Role name(s) (e.g. 'membership_admin')
@@ -445,7 +445,7 @@ export function emitToRole(roles, eventName, data) {
   const list = Array.isArray(roles) ? roles : [roles];
   const targets = new Set();
   for (const role of list) {
-    if (role === 'admin' || role === 'super_admin') {
+    if (role === 'admin' || role === 'super_admin' || role === 'SuperAdmin') {
       targets.add('admin-room');
       continue;
     }
