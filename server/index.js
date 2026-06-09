@@ -50,6 +50,8 @@ import * as studentAuthController from './controllers/studentAuthController.js';
 import { requireStudentAuth } from './middleware/studentAuthMiddleware.js';
 import { xssSanitizer } from './middleware/xssSanitizer.js';
 import { tierRateLimiter } from './middleware/tierRateLimiter.js';
+import compression from 'compression';
+import syncRouter from './routes/sync.js';
 
 validateLimiters();
 
@@ -74,6 +76,7 @@ app.set(
 );
 
 initializeSentry(app);
+app.use(compression());
 
 if (!process.env.CORS_ORIGIN) {
   throw new Error('CORS_ORIGIN environment variable must be set.');
@@ -199,7 +202,26 @@ app.use(
     },
   })
 );
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('CORS Policy: Origin not allowed.'));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400, // Cache preflight requests for 24 hours
+  })
+);
+app.options('*', cors());
 
 app.use(tracingMiddleware);
 
@@ -249,6 +271,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/monitoring', monitoringRouter);
 app.use('/api', documentationRouter);
 app.use('/', apiRouter);
+app.use('/', syncRouter);
 
 const adminAuth = adminAuthMiddleware.requireAdmin;
 
