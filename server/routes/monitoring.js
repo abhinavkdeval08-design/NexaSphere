@@ -13,6 +13,7 @@ import {
   getUserErrors,
 } from '../services/errorTrackingService.js';
 import logger from '../utils/logger.js';
+import { validateDataIntegrity } from '../utils/dataIntegrityValidator.js';
 
 function requireMonitoringAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -368,6 +369,18 @@ router.get('/incidents', requireMonitoringAuth, (req, res) => {
       error: 'Failed to fetch incident information',
     });
   }
+});
+
+router.get('/data-integrity', requireMonitoringAuth, (req, res) => {
+  const sampleData = [];
+
+  const report = validateDataIntegrity(sampleData);
+
+  res.status(200).json({
+    success: true,
+    data: report,
+    timestamp: new Date(),
+  });
 });
 
 export default router;
