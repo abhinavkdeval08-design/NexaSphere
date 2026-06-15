@@ -505,4 +505,8 @@ router.get('/dependency-health', async (req, res) => {
   // return dependency status
 });
 
+router.get("/deployment-status", (req, res) => {
+  res.json(deploymentStatus);
+});
+
 export default router;
