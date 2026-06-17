@@ -140,6 +140,14 @@ const TASK_DEFINITIONS = [
     category: 'analytics',
     enabled: true,
   },
+  {
+    id: 'overdue-task-reminder',
+    name: 'Overdue Task Reminder',
+    description: 'Scans Kanban boards for overdue tasks and notifies assignees',
+    cron: '0 10 * * *', // Every day at 10:00 AM
+    category: 'collaboration',
+    enabled: true,
+  },
 ];
 
 // ─── In-memory state ──────────────────────────────────────────────────────────
@@ -263,6 +271,10 @@ class SchedulerService extends EventEmitter {
         break;
       case 'analytics-aggregation':
         // await analyticsService.aggregate();
+        break;
+      case 'overdue-task-reminder':
+        console.log('[SchedulerService] Processing overdue task notifications...');
+        // logic to fetch tasks with dueDate < now and status != 'Done' and notify assignees
         break;
       default:
         throw new Error(`No implementation for task "${task.id}"`);
